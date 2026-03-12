@@ -13,11 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (applyBtn) {
         applyBtn.addEventListener('click', () => {
              // Mock sending user to application page
-             applyBtn.textContent = 'Redirecting to Checkout...';
+             applyBtn.textContent = 'Opening Subscription Form...';
              applyBtn.style.opacity = '0.7';
              setTimeout(() => {
-                 window.open('https://pay.withcherry.com/skin-refine-medspa-', '_blank');
-                 applyBtn.textContent = 'See if you qualify';
+                 applyBtn.textContent = 'Application Started (Demo)';
                  applyBtn.style.opacity = '1';
              }, 600);
         });
@@ -26,11 +25,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (manageBtn) {
         manageBtn.addEventListener('click', () => {
              // Mock sending user to portal
-             manageBtn.textContent = 'Opening Portal...';
+             manageBtn.textContent = 'Loading Subscriber Portal...';
              manageBtn.style.backgroundColor = '#f1f5f9';
              setTimeout(() => {
-                 window.open('https://pay.withcherry.com/', '_blank');
-                 manageBtn.textContent = 'Manage your account';
+                 manageBtn.textContent = 'Login Required (Demo)';
                  manageBtn.style.backgroundColor = 'white';
              }, 600);
         });
