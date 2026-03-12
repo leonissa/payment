@@ -210,4 +210,29 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 400);
         });
     }
+
+    // FAQ Accordion Logic
+    const faqQuestions = document.querySelectorAll('.faq-question');
+    faqQuestions.forEach(question => {
+        question.addEventListener('click', () => {
+            const item = question.parentElement;
+            const answer = item.querySelector('.faq-answer');
+            
+            // Close other open answers (optional, accordion style)
+            const activeItem = document.querySelector('.faq-item.active');
+            if(activeItem && activeItem !== item) {
+                activeItem.classList.remove('active');
+                activeItem.querySelector('.faq-answer').style.maxHeight = '0';
+            }
+
+            // Toggle current state
+            item.classList.toggle('active');
+            
+            if (item.classList.contains('active')) {
+                answer.style.maxHeight = answer.scrollHeight + 'px';
+            } else {
+                answer.style.maxHeight = '0';
+            }
+        });
+    });
 });
