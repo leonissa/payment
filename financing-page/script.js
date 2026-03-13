@@ -126,39 +126,37 @@ document.addEventListener('DOMContentLoaded', () => {
                                             </span>
                                         </div>
                                         <p class="checkout-subtitle">You selected the <strong>${timeVal}-${timeType}</strong> plan at <strong>$${monthlyPayment}/${timeAbbrev}</strong>.</p>
-                                        
-                                        <div class="checkout-grid">
+                                        <div class="checkout-grid mb-4" id="stripe-checkout-wrapper">
                                             <div class="input-group checkout-full">
-                                                <label for="card-name">Name on Card</label>
-                                                <input type="text" id="card-name" placeholder="John Doe">
+                                                <label for="card-name">Full Name <span style="color:red">*</span></label>
+                                                <input type="text" id="card-name" placeholder="John Doe" required>
                                             </div>
                                             <div class="input-group checkout-full">
-                                                <label for="card-number">Card Number</label>
-                                                <input type="text" id="card-number" placeholder="0000 0000 0000 0000" maxlength="19">
+                                                <label for="card-email">Email Address <span style="color:red">*</span></label>
+                                                <input type="email" id="card-email" placeholder="john@example.com" required>
                                             </div>
-                                            <div class="input-group">
-                                                <label for="card-expiry">Expiry (MM/YY)</label>
-                                                <input type="text" id="card-expiry" placeholder="MM/YY" maxlength="5">
+                                            
+                                            <div id="payment-element" style="margin-top: 1rem;">
+                                                <!--Stripe.js injects the Payment Element here -->
+                                                <div style="text-align:center; padding: 2rem; color: #64748b;">Loading secure payment inputs...</div>
                                             </div>
-                                            <div class="input-group">
-                                                <label for="card-cvc">CVC</label>
-                                                <input type="text" id="card-cvc" placeholder="123" maxlength="4">
-                                            </div>
+                                            
+                                            <div id="stripe-error" style="color: #ef4444; font-size: 0.85rem; text-align: center; margin-top: 1rem; display: none;"></div>
                                         </div>
-                                        <button class="btn-cherry btn-submit-payment w-full" id="submit-payment-btn">Authorize $${monthlyPayment} Down Payment</button>
+                                        <button class="btn-cherry btn-submit-payment w-full" id="submit-payment-btn" disabled>Loading Checkout...</button>
                                         <div class="checkout-lock-icon">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                                            Secure encrypted checkout
+                                            Secure automated billing
                                         </div>
                                     </div>
                                 `;
 
-                                // Setup form formatters & success listener
-                                setTimeout(() => {
-                                    const cardNum = document.getElementById('card-number');
-                                    const cardExp = document.getElementById('card-expiry');
+                                // Setup Stripe Elements Logic 
+                                setTimeout(async () => {
                                     const btnSubmit = document.getElementById('submit-payment-btn');
                                     const btnBack = document.getElementById('checkout-back-btn');
+                                    const errorMsg = document.getElementById('stripe-error');
+                                    let elements, stripeClient;
 
                                     if(btnBack) {
                                         btnBack.addEventListener('click', function() {
@@ -166,37 +164,77 @@ document.addEventListener('DOMContentLoaded', () => {
                                         });
                                     }
 
-                                    if(cardNum) {
-                                        cardNum.addEventListener('input', function (e) {
-                                            let val = e.target.value.replace(/\D/g, '');
-                                            val = val.replace(/(.{4})/g, '$1 ').trim();
-                                            e.target.value = val;
+                                    // Fetch intent from our node server
+                                    try {
+                                        const response = await fetch('/create-subscription', {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({
+                                                amount: monthlyPayment,
+                                                interval: timeType
+                                            })
                                         });
+                                        const { clientSecret, publishableKey } = await response.json();
+                                        
+                                        stripeClient = Stripe(publishableKey);
+                                        elements = stripeClient.elements({ clientSecret });
+                                        const paymentElement = elements.create("payment");
+                                        
+                                        // Clear the loading message and mount real secure frame
+                                        document.getElementById('payment-element').innerHTML = '';
+                                        paymentElement.mount("#payment-element");
+
+                                        // Ready for submission
+                                        btnSubmit.textContent = `Start $${monthlyPayment}/${timeAbbrev} Subscription`;
+                                        btnSubmit.disabled = false;
+                                        
+                                    } catch (e) {
+                                        console.error("Failed to load checkout", e);
+                                        errorMsg.textContent = "Failed to load secure checkout. Please try again.";
+                                        errorMsg.style.display = 'block';
                                     }
 
-                                    if(cardExp) {
-                                        cardExp.addEventListener('input', function(e) {
-                                            let val = e.target.value.replace(/\D/g, '');
-                                            if (val.length > 2) {
-                                                val = val.substring(0,2) + '/' + val.substring(2);
-                                            }
-                                            e.target.value = val;
-                                        });
-                                    }
-
+                                    // Handle payment submission
                                     if(btnSubmit) {
-                                        btnSubmit.addEventListener('click', function() {
+                                        btnSubmit.addEventListener('click', async function() {
+                                            const nameVal = document.getElementById('card-name').value.trim();
+                                            const emailVal = document.getElementById('card-email').value.trim();
+
+                                            if (!nameVal || !emailVal) {
+                                                errorMsg.textContent = 'Please fill out your name and email.';
+                                                errorMsg.style.display = 'block';
+                                                return;
+                                            }
+
+                                            errorMsg.style.display = 'none';
                                             btnSubmit.textContent = "Processing...";
                                             btnSubmit.style.opacity = "0.7";
-                                            setTimeout(() => {
-                                                cherryCalcResults.innerHTML = `
-                                                    <div style="text-align:center; padding: 2rem 0;">
-                                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" style="margin-bottom:1rem;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                                                        <h4 style="color:#059669; font-size:1.25rem; font-weight:800; margin-bottom:0.5rem;">Payment Successful</h4>
-                                                        <p style="color:#475569; font-size:0.95rem;">Your $${monthlyPayment} down payment has been processed securely.</p>
-                                                    </div>
-                                                `;
-                                            }, 1500);
+                                            btnSubmit.disabled = true;
+
+                                            // Confirm Payment directly through Stripe Elements
+                                            const { error } = await stripeClient.confirmPayment({
+                                                elements,
+                                                confirmParams: {
+                                                    // This will ultimately bounce the user, but we'll manually intercept the response in a real prod env
+                                                    // For mock/visual purposes, we handle the error flow or redirect flow.
+                                                    return_url: window.location.href, 
+                                                    payment_method_data: {
+                                                        billing_details: {
+                                                            name: nameVal,
+                                                            email: emailVal
+                                                        }
+                                                    }
+                                                },
+                                            });
+
+                                            // Elements only returns on error because it normally redirects on success
+                                            if (error) {
+                                                errorMsg.textContent = error.message;
+                                                errorMsg.style.display = 'block';
+                                                btnSubmit.textContent = `Start $${monthlyPayment}/${timeAbbrev} Subscription`;
+                                                btnSubmit.style.opacity = "1";
+                                                btnSubmit.disabled = false;
+                                            }
                                         });
                                     }
                                 }, 50);
